@@ -37,6 +37,7 @@ public class SvgTranscoderTask extends Copy {
     private NamingStrategy namingStrategy = new DefaultNamingStrategy();
     
     private String targetPackage;
+    private String suffix = null;
     
     /** The template to use for the generated classes. */
     private Template template = Template.getDefault();
@@ -55,9 +56,15 @@ public class SvgTranscoderTask extends Copy {
     public void setNamingStrategy(String strategy) {
         if ("camelcase".equals(strategy)) {
             namingStrategy = new CamelCaseNamingStrategy();
-        } else {
+        } else if ("default".equals(strategy)) {
             namingStrategy = new DefaultNamingStrategy();
+        } else {
+            throw new IllegalArgumentException("Unsupported naming strategy: " + strategy);
         }
+    }
+    
+    public void setSuffix(String suffix) {
+        this.suffix = suffix;
     }
 
     @Override
@@ -66,8 +73,11 @@ public class SvgTranscoderTask extends Copy {
     }
     
     public void execute() {
+        
         // define the default mapper if none is specified
         if (mapperElement == null) {
+            final NamingStrategy actualNamingStrategy = suffix == null ? namingStrategy : new SuffixNamingStrategy(namingStrategy, suffix);
+            
             GlobPatternMapper mapper = new GlobPatternMapper();
             mapper.setFrom("*.svg");
             mapper.setTo("*.java");
@@ -75,7 +85,7 @@ public class SvgTranscoderTask extends Copy {
                 public void setFrom(String from) { }
                 public void setTo(String to) { }
                 public String[] mapFileName(String filename) {
-                    return new String[] { namingStrategy.getClassName(new File(filename)) + ".java" };
+                    return new String[] { actualNamingStrategy.getClassName(new File(filename)) + ".java" };
                 }
             });
         }
@@ -83,6 +93,7 @@ public class SvgTranscoderTask extends Copy {
         super.execute();
     }
     
+    @Override
     protected void doFileOperations() {
         if (fileCopyMap.size() > 0) {
             File basedir = getProject().getBaseDir();
