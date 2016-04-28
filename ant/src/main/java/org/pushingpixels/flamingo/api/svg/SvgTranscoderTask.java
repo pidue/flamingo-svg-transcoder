@@ -35,9 +35,11 @@ import org.apache.tools.ant.util.GlobPatternMapper;
 public class SvgTranscoderTask extends Copy {
     
     private NamingStrategy namingStrategy = new DefaultNamingStrategy();
+    private NamingStrategy effectiveNamingStrategy;
     
     private String targetPackage;
     private String suffix = null;
+    
     
     /** The template to use for the generated classes. */
     private Template template = Template.getDefault();
@@ -72,11 +74,12 @@ public class SvgTranscoderTask extends Copy {
         super.validateAttributes();
     }
     
+    @Override
     public void execute() {
         
         // define the default mapper if none is specified
         if (mapperElement == null) {
-            final NamingStrategy actualNamingStrategy = suffix == null ? namingStrategy : new SuffixNamingStrategy(namingStrategy, suffix);
+            effectiveNamingStrategy = suffix == null ? namingStrategy : new SuffixNamingStrategy(namingStrategy, suffix);
             
             GlobPatternMapper mapper = new GlobPatternMapper();
             mapper.setFrom("*.svg");
@@ -85,7 +88,7 @@ public class SvgTranscoderTask extends Copy {
                 public void setFrom(String from) { }
                 public void setTo(String to) { }
                 public String[] mapFileName(String filename) {
-                    return new String[] { actualNamingStrategy.getClassName(new File(filename)) + ".java" };
+                    return new String[] { effectiveNamingStrategy.getClassName(new File(filename)) + ".java" };
                 }
             });
         }
@@ -129,7 +132,7 @@ public class SvgTranscoderTask extends Copy {
         target.getParentFile().mkdirs();
         PrintWriter pw = new PrintWriter(target);
         
-        SvgTranscoder transcoder = new SvgTranscoder(file.toURI().toURL(), namingStrategy.getClassName(file));
+        SvgTranscoder transcoder = new SvgTranscoder(file.toURI().toURL(), effectiveNamingStrategy.getClassName(file));
         transcoder.setTemplate(template);
         transcoder.setJavaPackageName(targetPackage);
         transcoder.setPrintWriter(pw);
