@@ -1,0 +1,47 @@
+${PACKAGE}
+
+import java.awt.*;
+import java.awt.geom.*;
+import static java.awt.Color.*;
+import static java.awt.MultipleGradientPaint.CycleMethod.*;
+import static java.awt.MultipleGradientPaint.ColorSpaceType.*;
+import com.trenolab.trilogy.micro.visual.VectorImage;
+
+/**
+ * This class has been automatically generated using
+ * <a href="http://ebourg.github.io/flamingo-svg-transcoder/">Flamingo SVG transcoder</a>.
+ */
+public enum ${CLASSNAME} implements VectorImage {
+
+    INSTANCE;
+
+    @Override
+    public Rectangle getBoundingBox() {
+        return new Rectangle(${X}, ${Y}, ${WIDTH}, ${HEIGHT});
+    }
+
+    /**
+     * Paints the transcoded SVG image on the specified graphics context. You
+     * can install a custom transformation on the graphics context to scale the
+     * image.
+     * 
+     * @param g Graphics context.
+     */
+    @Override 
+    public void paint(Graphics2D g) {
+        Shape shape = null;
+        
+        float origAlpha = 1.0f;
+        Composite origComposite = ((Graphics2D)g).getComposite();
+        if (origComposite instanceof AlphaComposite) {
+            AlphaComposite origAlphaComposite = (AlphaComposite)origComposite;
+            if (origAlphaComposite.getRule() == AlphaComposite.SRC_OVER) {
+                origAlpha = origAlphaComposite.getAlpha();
+            }
+        }
+        
+        java.util.LinkedList<AffineTransform> transformations = new java.util.LinkedList<AffineTransform>();
+        
+${PAINTING_CODE}
+    }
+}
