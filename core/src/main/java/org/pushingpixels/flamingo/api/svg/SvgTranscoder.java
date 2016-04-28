@@ -241,7 +241,7 @@ public class SvgTranscoder {
             bounds = new Rectangle2D.Double(0, 0, context.getDocumentSize().getWidth(), context.getDocumentSize().getHeight());
         }
         
-        Map<Template.Token, Object> params = new HashMap<Template.Token, Object>();
+        Map<Template.Token, Object> params = new HashMap<>();
         params.put(Template.Token.PACKAGE, javaPackageName != null ? "package " + javaPackageName + ";" : "");
         params.put(Template.Token.CLASSNAME, javaClassName);
         params.put(Template.Token.X, (int) Math.ceil(bounds.getX()));
