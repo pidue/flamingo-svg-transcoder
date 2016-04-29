@@ -21,13 +21,17 @@ public enum ${CLASSNAME} implements VectorImage {
         return new Rectangle(${X}, ${Y}, ${WIDTH}, ${HEIGHT});
     }
 
-    /**
-     * Paints the transcoded SVG image on the specified graphics context. You
-     * can install a custom transformation on the graphics context to scale the
-     * image.
-     * 
-     * @param g Graphics context.
-     */
+    @Override
+    public double getAspectRatio() {
+        return (double)${WIDTH} / (double)${HEIGHT};
+    }
+
+    public static Dimension fit(Dimension boundingBox) {
+        double ratio = Math.min(((double)boundingBox.height / (double)${HEIGHT}),((double)boundingBox.width / (double)${WIDTH}));
+        return new Dimension((int)(ratio * ${WIDTH}), (int)(ratio * ${HEIGHT}));
+    }
+
+
     @Override 
     public void paint(Graphics2D g) {
         Shape shape = null;
@@ -44,5 +48,7 @@ public enum ${CLASSNAME} implements VectorImage {
         LinkedList<AffineTransform> transformations = new LinkedList<>();
         
 ${PAINTING_CODE}
+
+        g.setComposite(origComposite);
     }
 }

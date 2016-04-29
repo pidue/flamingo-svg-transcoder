@@ -27,7 +27,6 @@
  * OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, 
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
-
 package org.pushingpixels.flamingo.api.svg;
 
 import java.awt.AlphaComposite;
@@ -92,40 +91,60 @@ import org.xml.sax.XMLReader;
  */
 public class SvgTranscoder {
 
-    /** The output writer receiving the generated class. */
+    /**
+     * The output writer receiving the generated class.
+     */
     protected PrintWriter externalPrintWriter;
 
-    /** Temporary buffer holding the code being generated. */
+    /**
+     * Temporary buffer holding the code being generated.
+     */
     protected PrintWriter printWriter;
 
-    /** Class name for the generated Java2D code. */
+    /**
+     * Class name for the generated Java2D code.
+     */
     protected String javaClassName;
 
-    /** Package name for the generated Java2D code. */
+    /**
+     * Package name for the generated Java2D code.
+     */
     protected String javaPackageName;
 
-    /** The template of the generated classes */
+    /**
+     * The template of the generated classes
+     */
     private Template template = Template.getDefault();
 
-    /** URL of the SVG image. */
+    /**
+     * URL of the SVG image.
+     */
     private URL url;
 
-    /** The current composite. */
-    private AlphaComposite currentComposite;
+    /**
+     * The current composite alpha.
+     */
+    private float currentAlpha = 1.0f;
 
-    /** The current paint, as a Java declaration. */
+    /**
+     * The current paint, as a Java declaration.
+     */
     private String currentPaint;
-    
-    /** The current stroke, as a Java declaration. */
+
+    /**
+     * The current stroke, as a Java declaration.
+     */
     private String currentStroke;
 
-    /** The current shape. */
+    /**
+     * The current shape.
+     */
     private Shape currentShape;
-    
+
     /**
      * Creates a new transcoder.
      *
-     * @param url           URL of the SVG image.
+     * @param url URL of the SVG image.
      * @param javaClassname Classname for the generated Java2D code.
      */
     public SvgTranscoder(URL url, String javaClassname) {
@@ -143,13 +162,13 @@ public class SvgTranscoder {
     }
 
     /**
-     * Returns the filtered image content. The metadata are removed from
-     * the document to prevent illegal elements from breaking the parsing.
-     * (For example several KDE icons have unrecognized RDF elements)
+     * Returns the filtered image content. The metadata are removed from the
+     * document to prevent illegal elements from breaking the parsing. (For
+     * example several KDE icons have unrecognized RDF elements)
      */
     private InputStream getInputStream() throws Exception {
         ByteArrayOutputStream buffer = new ByteArrayOutputStream();
-        
+
         SAXParserFactory factory = SAXParserFactory.newInstance();
         factory.setNamespaceAware(true);
         SAXParser parser = factory.newSAXParser();
@@ -159,7 +178,7 @@ public class SvgTranscoder {
                 return new InputSource(new StringReader(""));
             }
         });
-        
+
         InputSource input;
         if (url.toString().endsWith(".svgz")) {
             input = new InputSource(new GZIPInputStream(url.openStream()));
@@ -167,16 +186,16 @@ public class SvgTranscoder {
             input = new InputSource(url.openStream());
         }
         SAXSource source = new SAXSource(reader, input);
-        
+
         Result result = new StreamResult(buffer);
-        
+
         StreamSource stylesheet = new StreamSource(getClass().getResourceAsStream("/svg-cleanup.xsl"));
-        
+
         Transformer transformer = TransformerFactory.newInstance().newTransformer(stylesheet);
         transformer.transform(source, result);
-        
+
         stylesheet.getInputStream().close();
-        
+
         return new ByteArrayInputStream(buffer.toByteArray());
     }
 
@@ -193,11 +212,11 @@ public class SvgTranscoder {
         BridgeContext context = new BridgeContext(ua, loader);
         context.setDynamicState(BridgeContext.DYNAMIC);
         ua.setBridgeContext(context);
-        
+
         try {
             Document svgDoc = loader.loadDocument(url.toString(), getInputStream());
             new GVTBuilder().build(context, svgDoc);
-            
+
             transcode(context);
         } catch (Exception e) {
             Logger.getLogger(getClass().getName()).log(Level.SEVERE, "Unable to transcode " + url, e);
@@ -221,32 +240,32 @@ public class SvgTranscoder {
      */
     public void transcode(BridgeContext context) throws IOException {
         GraphicsNode root = context.getGraphicsNode(context.getDocument());
-        
+
         ByteArrayOutputStream paintingCodeStream = new ByteArrayOutputStream();
         this.printWriter = new IndentingPrintWriter(new PrintWriter(paintingCodeStream));
         transcodeGraphicsNode(root, "");
         this.printWriter.close();
-        
-        String separator = 
-                  "        paint${count}(g, origAlpha, transformations);\n"
+
+        String separator
+                = "        paint${count}(g, origAlpha, transformations);\n"
                 + "    }\n\n"
                 + "    private static void paint${count}(Graphics2D g, float origAlpha, java.util.LinkedList<AffineTransform> transformations) {\n"
                 + "        Shape shape = null;\n";
-        
+
         String paintingCode = new String(paintingCodeStream.toByteArray());
         paintingCode = TextSplitter.insert(paintingCode, separator, 3000);
-        
+
         Rectangle2D bounds = root.getBounds();
         if (bounds == null) {
             bounds = new Rectangle2D.Double(0, 0, context.getDocumentSize().getWidth(), context.getDocumentSize().getHeight());
         }
-        
+
         Map<Template.Token, Object> params = new HashMap<>();
         params.put(Template.Token.PACKAGE, javaPackageName != null ? "package " + javaPackageName + ";" : "");
         params.put(Template.Token.CLASSNAME, javaClassName);
         params.put(Template.Token.X, (int) Math.ceil(bounds.getX()));
         params.put(Template.Token.Y, (int) Math.ceil(bounds.getY()));
-        params.put(Template.Token.WIDTH,  (int) Math.ceil(bounds.getWidth()));
+        params.put(Template.Token.WIDTH, (int) Math.ceil(bounds.getWidth()));
         params.put(Template.Token.HEIGHT, (int) Math.ceil(bounds.getHeight()));
         params.put(Template.Token.PAINTING_CODE, paintingCode);
 
@@ -263,9 +282,9 @@ public class SvgTranscoder {
         if (shape == currentShape) {
             return;
         }
-        
+
         ShapeTranscoder.INSTANCE.transcode(shape, printWriter);
-        
+
         currentShape = shape;
     }
 
@@ -273,7 +292,8 @@ public class SvgTranscoder {
      * Transcodes the specified shape painter.
      *
      * @param painter Shape painter.
-     * @throws UnsupportedOperationException if the shape painter is unsupported.
+     * @throws UnsupportedOperationException if the shape painter is
+     * unsupported.
      */
     private void transcodeShapePainter(ShapePainter painter) throws UnsupportedOperationException {
         if (painter instanceof CompositeShapePainter) {
@@ -308,7 +328,7 @@ public class SvgTranscoder {
         if (paint == null) {
             return;
         }
-        
+
         transcodeShape(painter.getShape());
         transcodePaintChange(paint);
         printWriter.println("g.fill(shape);");
@@ -332,7 +352,7 @@ public class SvgTranscoder {
         if (paint == null) {
             return;
         }
-        
+
         transcodeShape(painter.getShape());
         transcodePaintChange(paint);
         transcodeStrokeChange(painter.getStroke());
@@ -348,28 +368,50 @@ public class SvgTranscoder {
     }
 
     private void transcodeCompositeChange(AlphaComposite composite) {
-        if (composite != null && !composite.equals(currentComposite) && !(currentComposite == null && composite.getAlpha() == 1)) {
-            currentComposite = composite;
-            printWriter.println("g.setComposite(AlphaComposite.getInstance(" + composite.getRule() + ", " + FloatTranscoder.INSTANCE.transcode(composite.getAlpha()) + " * origAlpha));");
+        if (composite != null && !(composite.getAlpha() == currentAlpha) && !(currentAlpha == 1.0f && composite.getAlpha() == 1)) {
+            currentAlpha = composite.getAlpha();
+            printWriter.println("g.setComposite(AlphaComposite.getInstance(" + composite.getRule() + ", " + FloatTranscoder.INSTANCE.transcode(currentAlpha) + " * origAlpha));");
+        }
+    }
+
+    private void transcodeCompositeChange(GraphicsNode node) {
+        AlphaComposite composite = (AlphaComposite) node.getComposite();
+        if (composite == null || composite.getAlpha() == 1.0f) {
+            return;
+        }
+        float alpha = 1.0f;
+        while (node != null) {
+            AlphaComposite parentComposite = (AlphaComposite) node.getComposite();
+            if (parentComposite != null) {
+                alpha *= parentComposite.getAlpha();
+            }
+            node = node.getParent();
+        }
+
+        if (alpha != currentAlpha) {
+            currentAlpha = alpha;
+            printWriter.println("g.setComposite(AlphaComposite.getInstance(" + composite.getRule() + ", " + FloatTranscoder.INSTANCE.transcode(alpha) + " * origAlpha));");
         }
     }
 
     /**
      * Transcodes the specified graphics node.
      *
-     * @param node    Graphics node.
-     * @param comment Comment (for associating the Java2D section with the corresponding SVG section).
-     * @throws UnsupportedOperationException if the graphics node is unsupported.
+     * @param node Graphics node.
+     * @param comment Comment (for associating the Java2D section with the
+     * corresponding SVG section).
+     * @throws UnsupportedOperationException if the graphics node is
+     * unsupported.
      */
     private void transcodeGraphicsNode(GraphicsNode node, String comment) throws UnsupportedOperationException {
-        transcodeCompositeChange((AlphaComposite) node.getComposite());
-        
+        transcodeCompositeChange(node);
+
         AffineTransform transform = node.getTransform();
         if (transform != null && !transform.isIdentity()) {
             printWriter.println("transformations.offer(g.getTransform());");
             printWriter.println("g.transform(" + AffineTransformTranscoder.INSTANCE.transcode(transform) + ");");
         }
-        
+
         try {
             printWriter.println("");
             printWriter.println("// " + comment);
@@ -395,16 +437,16 @@ public class SvgTranscoder {
 
     /**
      * Transcode the specified text node.
-     * 
+     *
      * @param text
      */
     private void transcodeTextNode(TextNode text) {
         if (text.getText() == null) {
             return;
         }
-        
+
         printWriter.println("// " + text.getText().replaceAll("[\\r\\n]]", " "));
-        
+
         Graphics2D g = new NoOpGraphics2D() {
             public void draw(Shape shape) {
                 transcodeShape(shape);
@@ -438,7 +480,7 @@ public class SvgTranscoder {
                 }
             }
         };
-        
+
         text.getTextPainter().paint(text, g);
     }
 }
